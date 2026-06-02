@@ -5,7 +5,7 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 
 // Scene
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf2a65a);
+scene.background = new THREE.Color(0xd97d55);
 
 const aspectRatio = window.innerWidth / window.innerHeight;
 
@@ -34,6 +34,10 @@ window.addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+//Card divs
+
+const label = document.getElementById("card-label")!;
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
@@ -171,9 +175,11 @@ loader.load(
     const cardThickness = 0.015;
     const stackBaseY = basketBox.min.y + basketSize.y * 0.01;
     const leanAngle = Math.PI * -0.1;
-    const cardColors = [0x1a1a2e, 0x16213e, 0x0f3460];
+    const cardColors = [
+      0x5a9cb5, 0xface68, 0xfaac68, 0xfa6868, 0xb1c29e, 0xffb4a2,
+    ];
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 6; i++) {
       const geometry = new THREE.BoxGeometry(cardSize, cardSize, cardThickness);
       const material = new THREE.MeshStandardMaterial({
         color: cardColors[i],
@@ -187,8 +193,8 @@ loader.load(
 
       const pos = new THREE.Vector3(
         basketCenter.x,
-        stackBaseY + cardSize / 2 + i * 0.02,
-        basketCenter.z - i * (cardSize * 0.25),
+        stackBaseY + cardSize / 2 + i * 0.15,
+        basketCenter.z - i * (cardSize * 0.2) + 0.7,
       );
 
       card.position.copy(pos);
@@ -270,13 +276,16 @@ window.addEventListener("click", (event) => {
 function select(card: THREE.Mesh) {
   selectedCard = card;
   isAnimating = true;
-  controls.enabled = false; // disable orbit while card is up
+  controls.enabled = false;
+  label.style.opacity = "1";
+  label.textContent = `Card ${cards.indexOf(card) + 1}`; // or any text per card
 }
 
 function deselect() {
   selectedCard = null;
   isAnimating = true;
   controls.enabled = true;
+  label.style.opacity = "0";
 }
 
 // =====================
@@ -296,17 +305,22 @@ function animate() {
       const orig = originalStates.get(card)!;
 
       if (card === selectedCard) {
-        // Move selected card up and upright
         const targetPos = getRaisedPosition();
         lerpVector3(card.position, targetPos, lerpAlpha);
-        card.rotation.x += (0 - card.rotation.x) * lerpAlpha;
+        card.rotation.x += (-0.4 - card.rotation.x) * lerpAlpha;
 
-        // Camera target follows the card
         lerpVector3(controls.target, getRaisedCameraTarget(), lerpAlpha);
+
+        const pos = card.position.clone();
+        pos.project(camera);
+        const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+        label.style.left = `${x}px`;
+        label.style.top = `${y - 100}px`;
 
         if (card.position.distanceTo(targetPos) > 0.01) stillMoving = true;
       } else {
-        // All other cards return to original position
+        // Return card to its original position and rotation
         lerpVector3(card.position, orig.position, lerpAlpha);
         card.rotation.x += (orig.rotation.x - card.rotation.x) * lerpAlpha;
 
