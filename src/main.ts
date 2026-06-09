@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 
 // Scene
 const scene = new THREE.Scene();
@@ -250,7 +249,6 @@ function getBasketCameraTarget(): THREE.Vector3 {
 // =====================
 
 const cardClickCount = new Map<THREE.Mesh, number>();
-let cardRotationY = 0;
 let isExpanded = false;
 
 // Back button
