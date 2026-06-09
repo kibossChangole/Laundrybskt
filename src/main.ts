@@ -249,6 +249,7 @@ function getBasketCameraTarget(): THREE.Vector3 {
 // =====================
 
 const cardClickCount = new Map<THREE.Mesh, number>();
+let cardRotationY = 0;
 let isExpanded = false;
 
 // Back button
