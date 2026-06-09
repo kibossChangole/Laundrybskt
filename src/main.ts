@@ -27,26 +27,29 @@ function getDynamicFOV() {
 
 window.addEventListener("resize", () => {
   const aspect = window.innerWidth / window.innerHeight;
-  getDynamicFOV();
+  const mobile = window.innerWidth < 768;
   camera.aspect = aspect;
-  camera.fov = aspect > 1.6 ? 50 : 60;
+  camera.fov = getDynamicFOV();
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.5 : 2));
 });
 
 //Card divs
 
 const label = document.getElementById("card-label")!;
+const isMobile = window.innerWidth < 768;
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
+  powerPreference: "high-performance",
 });
 
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 
 document.body.appendChild(renderer.domElement);
 
@@ -77,9 +80,16 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
 
 directionalLight.position.set(5, 10, 5);
 directionalLight.castShadow = true;
-
-directionalLight.shadow.mapSize.width = 2048;
-directionalLight.shadow.mapSize.height = 2048;
+directionalLight.shadow.mapSize.width = isMobile ? 1024 : 2048;
+directionalLight.shadow.mapSize.height = isMobile ? 1024 : 2048;
+directionalLight.shadow.camera.near = 0.5;
+directionalLight.shadow.camera.far = 25;
+const d = 6;
+directionalLight.shadow.camera.left = -d;
+directionalLight.shadow.camera.right = d;
+directionalLight.shadow.camera.top = d;
+directionalLight.shadow.camera.bottom = -d;
+directionalLight.shadow.bias = -0.0005;
 
 scene.add(directionalLight);
 
@@ -231,7 +241,7 @@ function lerpVector3(
   current.lerp(target, alpha);
 }
 
-// Raised position — above the basket, upright, facing camera
+// Raised position - above the basket, upright, facing camera
 function getRaisedPosition(): THREE.Vector3 {
   return new THREE.Vector3(0, 2.5, 1.5);
 }
@@ -294,6 +304,14 @@ window.addEventListener("click", (event) => {
       isExpanded = true;
       isAnimating = true;
 
+      // Set fullscreen bounds once; avoid layout writes in animate().
+      label.style.position = "fixed";
+      label.style.top = "0";
+      label.style.left = "0";
+      label.style.width = "100vw";
+      label.style.height = "100vh";
+      label.style.transform = "none";
+
       setTimeout(() => {
         if (selectedCard === clicked && isExpanded) {
           label.style.opacity = "1";
@@ -340,11 +358,11 @@ window.addEventListener("click", (event) => {
       <div style="max-width: 600px; margin: 0 auto;">
         <h3 style="margin-top: 0; font-size: 2.2rem; margin-bottom: 1.5rem;">Card ${cards.indexOf(clicked) + 1}</h3>
         <p style="font-size: 1.1rem; line-height: 1.7; color: #ccc; margin-bottom: 1.5rem;">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
         </p>
         <p style="font-size: 1.1rem; line-height: 1.7; color: #ccc;">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
         </p>
         <div style="height: 150px;"></div>
@@ -386,7 +404,13 @@ function select(card: THREE.Mesh) {
   controls.enableZoom = false;
 
   label.style.opacity = "0";
-  label.style.pointerEvents = "none"; // <-- ADD THIS: keeps it unclickable on click 1
+  label.style.pointerEvents = "none";
+  label.style.position = "absolute";
+  label.style.width = "auto";
+  label.style.height = "auto";
+  label.style.top = "0";
+  label.style.left = "0";
+  label.style.transform = "translate3d(-50%, -50%, 0)";
   label.innerHTML = "";
 }
 
@@ -404,7 +428,13 @@ function deselect() {
   controls.enableZoom = true;
 
   label.style.opacity = "0";
-  label.style.pointerEvents = "none"; // <-- ADD THIS: disables interaction when closed
+  label.style.pointerEvents = "none";
+  label.style.position = "absolute";
+  label.style.width = "auto";
+  label.style.height = "auto";
+  label.style.top = "0";
+  label.style.left = "0";
+  label.style.transform = "translate3d(-50%, -50%, 0)";
   label.innerHTML = "";
 
   backButton.style.opacity = "0";
@@ -461,26 +491,13 @@ function animate() {
           if (card.position.distanceTo(expandedPos) > 0.01) stillMoving = true;
         }
 
-        // --- ARRANGE POSITION CONSTRAINTS REGARDLESS OF CLICK COUNT ---
-        const pos = card.position.clone();
-        pos.project(camera);
-        const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
-
-        label.style.position = "absolute";
-        label.style.transform = "translate(-50%, -50%)";
-        label.style.left = `${x}px`;
-
-        // Dynamic sizing adjustments based on what state the active card is experiencing
+        // Keep per-frame DOM writes minimal: only update tracked position on click 1.
         if (clickCount === 1) {
-          label.style.width = "auto";
-          label.style.height = "auto";
-          label.style.top = `${y - 100}px`;
-        } else if (clickCount === 2) {
-          // Force the element bounds to match the device aspect screen width & height seamlessly
-          label.style.width = "100vw"; // Adjust these to add border padding around the massive 3D mesh
-          label.style.height = "101vh"; // Fits the frame comfortably inside the user's viewport
-          label.style.top = `${y}px`;
+          const pos = card.position.clone();
+          pos.project(camera);
+          const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+          const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+          label.style.transform = `translate3d(calc(${x}px - 50%), calc(${y - 100}px - 50%), 0)`;
         }
       } else {
         lerpVector3(card.position, orig.position, lerpAlpha);
