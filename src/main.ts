@@ -63,6 +63,8 @@ controls.maxPolarAngle = Math.PI * 0.4;
 controls.minAzimuthAngle = 0.0;
 controls.maxAzimuthAngle = 0.0;
 
+controls.enableZoom = false; 
+
 // =====================
 // LIGHTING
 // =====================
@@ -116,7 +118,6 @@ ground.position.y = -1;
 ground.receiveShadow = true;
 
 scene.add(ground);
-
 
 // =====================
 // MODEL LOADER
@@ -279,10 +280,27 @@ window.addEventListener("click", (event) => {
     if (next === 1) {
       cardClickCount.set(clicked, 1);
       select(clicked);
+      label.style.opacity = "1";
+      label.style.pointerEvents = "auto"; // <-- ADD THIS: enables scrolling when visible
+      label.innerHTML = ``;
     } else if (next === 2) {
       cardClickCount.set(clicked, 2);
       isExpanded = true;
       isAnimating = true;
+
+      // --- ADDED/CHANGED FOR THE SECOND CLICK ---
+
+      setTimeout(() => {
+        // Only update if the user hasn't quickly clicked away/deselected in those few ms
+        if (selectedCard === clicked && isExpanded) {
+          label.style.opacity = "1";
+          label.style.pointerEvents = "auto";
+          label.innerHTML = `<h3>Card ${cards.indexOf(clicked) + 1}</h3><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>`;
+        }
+      }, 300); // <-- 300 milliseconds delay. Change this number to tweak the timing!
+
+      // ------------------------------------------
+
       backButton.style.opacity = "1";
       backButton.style.pointerEvents = "auto";
     }
@@ -303,14 +321,17 @@ function select(card: THREE.Mesh) {
   card.rotation.z = 0;
   controls.enableRotate = false;
   controls.enableZoom = false;
-  label.style.opacity = "1";
-  label.textContent = `Card ${cards.indexOf(card) + 1}`;
+
+  label.style.opacity = "0";
+  label.style.pointerEvents = "none"; // <-- ADD THIS: keeps it unclickable on click 1
+  label.innerHTML = "";
 }
 
 function deselect() {
   if (selectedCard) {
     selectedCard.rotation.y = 0;
     selectedCard.rotation.z = 0;
+    cardClickCount.set(selectedCard, 0); // Reset the click tracker for this card
   }
   cardRotationY = 0;
   isExpanded = false;
@@ -318,7 +339,11 @@ function deselect() {
   isAnimating = true;
   controls.enableRotate = true;
   controls.enableZoom = true;
+
   label.style.opacity = "0";
+  label.style.pointerEvents = "none"; // <-- ADD THIS: disables interaction when closed
+  label.innerHTML = "";
+
   backButton.style.opacity = "0";
   backButton.style.pointerEvents = "none";
 }

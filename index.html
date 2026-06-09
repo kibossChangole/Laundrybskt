@@ -9,17 +9,23 @@
   <body style="margin: 0; position:relative;">
     <div id="app">
      <div id="card-label" style="
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 1.5rem;
-  font-family: sans-serif;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-"></div>
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 1.5rem;
+      font-family: sans-serif;
+      margin-top:50px;
+      margin-bottom:auto;
+      max-height: 400px;
+      width: 90%;
+      padding: 5px 10px;
+      overflow-y: auto; /* Changed 'scroll' to 'auto' so scrollbars only appear when needed */
+      opacity: 0;
+      pointer-events: none; /* Keep this here initially so it doesn't block clicks while invisible */
+      transition: opacity 0.4s ease;
+    "></div>
 
 <button id="back-button" style="
   position: absolute;
