@@ -360,7 +360,7 @@ function animate() {
           // Fly toward camera and fill view
           const expandedPos = getExpandedPosition();
           lerpVector3(card.position, expandedPos, lerpAlpha);
-          card.rotation.x += (-0.15 - card.rotation.x) * lerpAlpha;
+          card.rotation.x += (-0.27 - card.rotation.x) * lerpAlpha;
           card.rotation.y += (0 - card.rotation.y) * lerpAlpha;
           card.rotation.z += (0 - card.rotation.z) * lerpAlpha;
 
