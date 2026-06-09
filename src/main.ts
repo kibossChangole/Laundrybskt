@@ -40,6 +40,7 @@ window.addEventListener("resize", () => {
   directionalLight.shadow.mapSize.height = window.innerWidth < 768 ? 1024 : 2048;
   directionalLight.shadow.map?.dispose();
   renderer.shadowMap.needsUpdate = true;
+  lerpAlpha = getLerpAlphaForViewport();
 });
 
 //Card divs
@@ -48,6 +49,10 @@ const label = document.getElementById("card-label")!;
 
 function getMaxPixelRatio() {
   return window.innerWidth < 768 ? 1.5 : 2;
+}
+
+function getLerpAlphaForViewport() {
+  return window.innerWidth < 768 ? 0.16 : 0.08;
 }
 
 const MIN_PIXEL_RATIO = 1;
@@ -453,7 +458,7 @@ function deselect() {
 // ANIMATION LOOP
 // =====================
 
-const lerpAlpha = 0.08;
+let lerpAlpha = getLerpAlphaForViewport();
 const RAISED_POSITION = new THREE.Vector3(0, 2.5, 1.5);
 const RAISED_CAMERA_TARGET = new THREE.Vector3(0, 2.5, 1.5);
 const BASKET_CAMERA_TARGET = new THREE.Vector3(0, 0, 0);
