@@ -63,7 +63,7 @@ controls.maxPolarAngle = Math.PI * 0.4;
 controls.minAzimuthAngle = 0.0;
 controls.maxAzimuthAngle = 0.0;
 
-controls.enableZoom = false; 
+controls.enableZoom = false;
 
 // =====================
 // LIGHTING
@@ -263,8 +263,13 @@ backButton.addEventListener("click", () => {
 });
 
 window.addEventListener("click", (event) => {
-  // Ignore clicks on the back button
-  if ((event.target as HTMLElement).id === "back-button") return;
+  // Ignore clicks on the back button or elements inside it
+  const targetElement = event.target as HTMLElement;
+  if (
+    targetElement.id === "back-button" ||
+    targetElement.closest("#back-button")
+  )
+    return;
 
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -274,38 +279,97 @@ window.addEventListener("click", (event) => {
 
   if (hits.length > 0) {
     const clicked = hits[0].object as THREE.Mesh;
-    const count = cardClickCount.get(clicked) ?? 0;
-    const next = count + 1;
 
-    if (next === 1) {
+    if (selectedCard && selectedCard !== clicked) {
+      cardClickCount.set(selectedCard, 0);
+      deselect();
+    }
+
+    const currentCount = cardClickCount.get(clicked) ?? 0;
+
+    if (currentCount === 0) {
       cardClickCount.set(clicked, 1);
-      select(clicked);
-      label.style.opacity = "1";
-      label.style.pointerEvents = "auto"; // <-- ADD THIS: enables scrolling when visible
-      label.innerHTML = ``;
-    } else if (next === 2) {
+      select(clicked); // Keeps label hidden on first click
+    } else if (currentCount === 1) {
       cardClickCount.set(clicked, 2);
       isExpanded = true;
       isAnimating = true;
 
-      // --- ADDED/CHANGED FOR THE SECOND CLICK ---
-
       setTimeout(() => {
-        // Only update if the user hasn't quickly clicked away/deselected in those few ms
         if (selectedCard === clicked && isExpanded) {
           label.style.opacity = "1";
           label.style.pointerEvents = "auto";
-          label.innerHTML = `<h3>Card ${cards.indexOf(clicked) + 1}</h3><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>`;
-        }
-      }, 300); // <-- 300 milliseconds delay. Change this number to tweak the timing!
+          label.innerHTML = `
+  <div class="parallax-wrapper" style="
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-radius: 0px;
+    -webkit-overflow-scrolling: touch;
+  ">
+    <div class="carousel-bg" style="
+      position: sticky;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 74vh; /* Takes up exactly half of the device viewport height */
+      z-index: 1;
+      overflow: hidden;
+      pointer-events: none;
+    ">
+      <div class="carousel-track" style="display: flex; width: 300%; height: 100%; animation: carouselScroll 12s infinite ease-in-out;">
+        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), url('https://picsum.photos/id/10/1200/800') center/cover no-repeat;"></div>
+        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), url('https://picsum.photos/id/11/1200/800') center/cover no-repeat;"></div>
+        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), url('https://picsum.photos/id/12/1200/800') center/cover no-repeat;"></div>
+      </div>
+    </div>
 
-      // ------------------------------------------
+    <div class="scroll-content" style="
+      position: relative;
+      z-index: 2;
+      margin-top: -15vh; /* Pulls text section up over the viewport carousel */
+      background: #1e1e1e;
+      color: #ffffff;
+      padding: 3rem 2rem;
+      min-height: 60vh;
+      box-shadow: 0 -15px 30px rgba(0,0,0,0.5);
+      box-sizing: border-box;
+         border-radius: 0px 120px 0px 0;
+    ">
+      <div style="max-width: 600px; margin: 0 auto;">
+        <h3 style="margin-top: 0; font-size: 2.2rem; margin-bottom: 1.5rem;">Card ${cards.indexOf(clicked) + 1}</h3>
+        <p style="font-size: 1.1rem; line-height: 1.7; color: #ccc; margin-bottom: 1.5rem;">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+        </p>
+        <p style="font-size: 1.1rem; line-height: 1.7; color: #ccc;">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+        </p>
+        <div style="height: 150px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes carouselScroll {
+      0%, 25%   { transform: translateX(0); }
+      33%, 58%  { transform: translateX(-33.33%); }
+      66%, 91%  { transform: translateX(-66.66%); }
+      100%      { transform: translateX(0); }
+    }
+  </style>
+`;
+        }
+      }, 300);
 
       backButton.style.opacity = "1";
       backButton.style.pointerEvents = "auto";
     }
   } else {
-    if (selectedCard && !isExpanded) {
+    if (selectedCard) {
       cardClickCount.set(selectedCard, 0);
       deselect();
     }
@@ -398,12 +462,27 @@ function animate() {
           if (card.position.distanceTo(expandedPos) > 0.01) stillMoving = true;
         }
 
+        // --- ARRANGE POSITION CONSTRAINTS REGARDLESS OF CLICK COUNT ---
         const pos = card.position.clone();
         pos.project(camera);
         const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
         const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+
+        label.style.position = "absolute";
+        label.style.transform = "translate(-50%, -50%)";
         label.style.left = `${x}px`;
-        label.style.top = `${y - 100}px`;
+
+        // Dynamic sizing adjustments based on what state the active card is experiencing
+        if (clickCount === 1) {
+          label.style.width = "auto";
+          label.style.height = "auto";
+          label.style.top = `${y - 100}px`;
+        } else if (clickCount === 2) {
+          // Force the element bounds to match the device aspect screen width & height seamlessly
+          label.style.width = "100vw"; // Adjust these to add border padding around the massive 3D mesh
+          label.style.height = "101vh"; // Fits the frame comfortably inside the user's viewport
+          label.style.top = `${y}px`;
+        }
       } else {
         lerpVector3(card.position, orig.position, lerpAlpha);
         card.rotation.x += (orig.rotation.x - card.rotation.x) * lerpAlpha;

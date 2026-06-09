@@ -9,29 +9,29 @@
   <body style="margin: 0; position:relative;">
     <div id="app">
      <div id="card-label" style="
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: white;
-      font-size: 1.5rem;
-      font-family: sans-serif;
-      margin-top:50px;
-      margin-bottom:auto;
-      max-height: 400px;
-      width: 90%;
-      padding: 5px 10px;
-      overflow-y: auto; /* Changed 'scroll' to 'auto' so scrollbars only appear when needed */
-      opacity: 0;
-      pointer-events: none; /* Keep this here initially so it doesn't block clicks while invisible */
-      transition: opacity 0.4s ease;
-    "></div>
+   position: absolute;
+   top: 50%;
+   left: 50%;
+   transform: translate(-50%, -50%);
+   color: white;
+   font-family: sans-serif;
+   width: 100%;
+   height: 400px;
+   overflow-y: auto;          /* Crucial for scrolling */
+   opacity: 0;
+   pointer-events: none;
+   transition: opacity 0.4s ease;
 
-<button id="back-button" style="
+   box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+"></div>
+     <button id="back-button" style="
   position: absolute;
   bottom: 2rem;
   left: 50%;
   transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.6rem 1.6rem;
   background: white;
   border: none;
@@ -39,9 +39,16 @@
   font-size: 1rem;
   cursor: pointer;
   opacity: 0;
-  pointer-events: none;
+  pointer-events: none; /* This controls the button's overall visibility state */
   transition: opacity 0.3s ease;
-">← Back</button>
+">
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block; pointer-events: none;">
+    <line x1="19" y1="12" x2="5" y2="12"></line>
+    <polyline points="12 19 5 12 12 5"></polyline>
+  </svg>
+  
+  <span style="pointer-events: none;">Back</span>
+</button>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
