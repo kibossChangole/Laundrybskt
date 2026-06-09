@@ -27,18 +27,31 @@ function getDynamicFOV() {
 
 window.addEventListener("resize", () => {
   const aspect = window.innerWidth / window.innerHeight;
-  const mobile = window.innerWidth < 768;
+  const maxPixelRatio = getMaxPixelRatio();
   camera.aspect = aspect;
   camera.fov = getDynamicFOV();
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.5 : 2));
+  dynamicPixelRatio = Math.min(dynamicPixelRatio, maxPixelRatio);
+  renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, dynamicPixelRatio, maxPixelRatio),
+  );
+  directionalLight.shadow.mapSize.width = window.innerWidth < 768 ? 1024 : 2048;
+  directionalLight.shadow.mapSize.height = window.innerWidth < 768 ? 1024 : 2048;
+  directionalLight.shadow.map?.dispose();
+  renderer.shadowMap.needsUpdate = true;
 });
 
 //Card divs
 
 const label = document.getElementById("card-label")!;
-const isMobile = window.innerWidth < 768;
+
+function getMaxPixelRatio() {
+  return window.innerWidth < 768 ? 1.5 : 2;
+}
+
+const MIN_PIXEL_RATIO = 1;
+let dynamicPixelRatio = Math.min(window.devicePixelRatio, getMaxPixelRatio());
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
@@ -47,15 +60,21 @@ const renderer = new THREE.WebGLRenderer({
 });
 
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+renderer.setPixelRatio(dynamicPixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
+// Update shadow map only when scene/light/camera changes.
+renderer.shadowMap.autoUpdate = false;
+renderer.shadowMap.needsUpdate = true;
 
 document.body.appendChild(renderer.domElement);
 
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+controls.addEventListener("change", () => {
+  renderer.shadowMap.needsUpdate = true;
+});
 
 // Limit vertical orbit
 controls.minPolarAngle = Math.PI * 0.1;
@@ -80,8 +99,8 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
 
 directionalLight.position.set(5, 10, 5);
 directionalLight.castShadow = true;
-directionalLight.shadow.mapSize.width = isMobile ? 1024 : 2048;
-directionalLight.shadow.mapSize.height = isMobile ? 1024 : 2048;
+directionalLight.shadow.mapSize.width = window.innerWidth < 768 ? 1024 : 2048;
+directionalLight.shadow.mapSize.height = window.innerWidth < 768 ? 1024 : 2048;
 directionalLight.shadow.camera.near = 0.5;
 directionalLight.shadow.camera.far = 25;
 const d = 6;
@@ -214,6 +233,7 @@ loader.load(
       });
 
       cards.push(card);
+      cardIndexMap.set(card, i + 1);
       scene.add(card);
     }
 
@@ -241,24 +261,12 @@ function lerpVector3(
   current.lerp(target, alpha);
 }
 
-// Raised position - above the basket, upright, facing camera
-function getRaisedPosition(): THREE.Vector3 {
-  return new THREE.Vector3(0, 2.5, 1.5);
-}
-
-function getRaisedCameraTarget(): THREE.Vector3 {
-  return new THREE.Vector3(0, 2.5, 1.5);
-}
-
-function getBasketCameraTarget(): THREE.Vector3 {
-  return new THREE.Vector3(0, 0, 0);
-}
-
 // =====================
 // CLICK HANDLER
 // =====================
 
 const cardClickCount = new Map<THREE.Mesh, number>();
+const cardIndexMap = new Map<THREE.Mesh, number>();
 let cardRotationY = 0;
 let isExpanded = false;
 
@@ -356,7 +364,7 @@ window.addEventListener("click", (event) => {
          border-radius: 0px 120px 0px 0;
     ">
       <div style="max-width: 600px; margin: 0 auto;">
-        <h3 style="margin-top: 0; font-size: 2.2rem; margin-bottom: 1.5rem;">Card ${cards.indexOf(clicked) + 1}</h3>
+        <h3 style="margin-top: 0; font-size: 2.2rem; margin-bottom: 1.5rem;">Card ${cardIndexMap.get(clicked) ?? 1}</h3>
         <p style="font-size: 1.1rem; line-height: 1.7; color: #ccc; margin-bottom: 1.5rem;">
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
@@ -446,10 +454,52 @@ function deselect() {
 // =====================
 
 const lerpAlpha = 0.08;
+const RAISED_POSITION = new THREE.Vector3(0, 2.5, 1.5);
+const RAISED_CAMERA_TARGET = new THREE.Vector3(0, 2.5, 1.5);
+const BASKET_CAMERA_TARGET = new THREE.Vector3(0, 0, 0);
+const EXPANDED_POSITION = new THREE.Vector3(0, 3, 3);
+const projectedPos = new THREE.Vector3();
 
-// How close to camera the card flies when expanded
-function getExpandedPosition(): THREE.Vector3 {
-  return new THREE.Vector3(0, 3, 3);
+let lastFrameTime = performance.now();
+let frameSampleAccum = 0;
+let frameSampleCount = 0;
+let adaptiveCooldown = 0;
+
+function tunePixelRatio(frameMs: number) {
+  frameSampleAccum += frameMs;
+  frameSampleCount += 1;
+
+  if (frameSampleCount < 30) return;
+  if (adaptiveCooldown > 0) {
+    adaptiveCooldown -= 1;
+    frameSampleAccum = 0;
+    frameSampleCount = 0;
+    return;
+  }
+
+  const avgFrameMs = frameSampleAccum / frameSampleCount;
+  const maxPixelRatio = getMaxPixelRatio();
+  let nextPixelRatio = dynamicPixelRatio;
+
+  // Reduce GPU load when sustained frame time rises; recover quality slowly.
+  if (avgFrameMs > 19) nextPixelRatio -= 0.1;
+  if (avgFrameMs < 14 && dynamicPixelRatio < maxPixelRatio) nextPixelRatio += 0.05;
+
+  nextPixelRatio = THREE.MathUtils.clamp(
+    nextPixelRatio,
+    MIN_PIXEL_RATIO,
+    maxPixelRatio,
+  );
+
+  if (Math.abs(nextPixelRatio - dynamicPixelRatio) >= 0.025) {
+    dynamicPixelRatio = nextPixelRatio;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, dynamicPixelRatio));
+    renderer.shadowMap.needsUpdate = true;
+    adaptiveCooldown = 2;
+  }
+
+  frameSampleAccum = 0;
+  frameSampleCount = 0;
 }
 
 function animate() {
@@ -464,20 +514,19 @@ function animate() {
       const clickCount = cardClickCount.get(card) ?? 0;
 
       if (card === selectedCard) {
-        lerpVector3(controls.target, getRaisedCameraTarget(), lerpAlpha);
+        lerpVector3(controls.target, RAISED_CAMERA_TARGET, lerpAlpha);
 
         if (clickCount === 1) {
           // Slide up
-          lerpVector3(card.position, getRaisedPosition(), lerpAlpha);
+          lerpVector3(card.position, RAISED_POSITION, lerpAlpha);
           card.rotation.x += (-0.3 - card.rotation.x) * lerpAlpha;
           card.rotation.y += (0 - card.rotation.y) * lerpAlpha;
 
-          if (card.position.distanceTo(getRaisedPosition()) > 0.01)
+          if (card.position.distanceTo(RAISED_POSITION) > 0.01)
             stillMoving = true;
         } else if (clickCount === 2) {
           // Fly toward camera and fill view
-          const expandedPos = getExpandedPosition();
-          lerpVector3(card.position, expandedPos, lerpAlpha);
+          lerpVector3(card.position, EXPANDED_POSITION, lerpAlpha);
           card.rotation.x += (-0.27 - card.rotation.x) * lerpAlpha;
           card.rotation.y += (0 - card.rotation.y) * lerpAlpha;
           card.rotation.z += (0 - card.rotation.z) * lerpAlpha;
@@ -488,15 +537,15 @@ function animate() {
           card.scale.x += (targetScalex - card.scale.x) * lerpAlpha;
           card.scale.y += (targetScaley - card.scale.y) * lerpAlpha;
 
-          if (card.position.distanceTo(expandedPos) > 0.01) stillMoving = true;
+          if (card.position.distanceTo(EXPANDED_POSITION) > 0.01)
+            stillMoving = true;
         }
 
         // Keep per-frame DOM writes minimal: only update tracked position on click 1.
         if (clickCount === 1) {
-          const pos = card.position.clone();
-          pos.project(camera);
-          const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
-          const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+          projectedPos.copy(card.position).project(camera);
+          const x = (projectedPos.x * 0.5 + 0.5) * window.innerWidth;
+          const y = (-projectedPos.y * 0.5 + 0.5) * window.innerHeight;
           label.style.transform = `translate3d(calc(${x}px - 50%), calc(${y - 100}px - 50%), 0)`;
         }
       } else {
@@ -514,11 +563,17 @@ function animate() {
     });
 
     if (!selectedCard) {
-      lerpVector3(controls.target, getBasketCameraTarget(), lerpAlpha);
+      lerpVector3(controls.target, BASKET_CAMERA_TARGET, lerpAlpha);
     }
 
+    renderer.shadowMap.needsUpdate = true;
     if (!stillMoving) isAnimating = false;
   }
+
+  const now = performance.now();
+  const frameMs = now - lastFrameTime;
+  lastFrameTime = now;
+  tunePixelRatio(frameMs);
 
   renderer.render(scene, camera);
 }
