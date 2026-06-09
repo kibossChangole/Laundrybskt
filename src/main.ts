@@ -16,7 +16,7 @@ const camera = new THREE.PerspectiveCamera(
   1000,
 );
 
-camera.position.set(0, 3, 6);
+camera.position.set(0, 2.5, 6);
 
 function getDynamicFOV() {
   const aspect = window.innerWidth / window.innerHeight;
@@ -330,8 +330,8 @@ window.addEventListener("click", (event) => {
       position: relative;
       z-index: 2;
       margin-top: -15vh; /* Pulls text section up over the viewport carousel */
-      background: #1e1e1e;
-      color: #ffffff;
+      background: #ffffff;
+      color: #1e1e1e;
       padding: 3rem 2rem;
       min-height: 60vh;
       box-shadow: 0 -15px 30px rgba(0,0,0,0.5);
