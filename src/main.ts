@@ -16,7 +16,7 @@ const camera = new THREE.PerspectiveCamera(
   1000,
 );
 
-camera.position.set(0, 3.5, 6);
+camera.position.set(0, 3, 6);
 
 function getDynamicFOV() {
   const aspect = window.innerWidth / window.innerHeight;
@@ -60,8 +60,8 @@ controls.minPolarAngle = Math.PI * 0.1;
 controls.maxPolarAngle = Math.PI * 0.4;
 
 // Lock horizontal rotation completely
-controls.minAzimuthAngle = 0;
-controls.maxAzimuthAngle = 0.5;
+controls.minAzimuthAngle = 0.0;
+controls.maxAzimuthAngle = 0.0;
 
 // =====================
 // LIGHTING
@@ -117,9 +117,6 @@ ground.receiveShadow = true;
 
 scene.add(ground);
 
-// =====================
-// MODEL LOADER
-// =====================
 
 // =====================
 // MODEL LOADER
@@ -251,7 +248,23 @@ function getBasketCameraTarget(): THREE.Vector3 {
 // CLICK HANDLER
 // =====================
 
+const cardClickCount = new Map<THREE.Mesh, number>();
+let cardRotationY = 0;
+let isExpanded = false;
+
+// Back button
+const backButton = document.getElementById("back-button")!;
+backButton.addEventListener("click", () => {
+  if (selectedCard) {
+    cardClickCount.set(selectedCard, 0);
+    deselect();
+  }
+});
+
 window.addEventListener("click", (event) => {
+  // Ignore clicks on the back button
+  if ((event.target as HTMLElement).id === "back-button") return;
+
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -260,39 +273,66 @@ window.addEventListener("click", (event) => {
 
   if (hits.length > 0) {
     const clicked = hits[0].object as THREE.Mesh;
+    const count = cardClickCount.get(clicked) ?? 0;
+    const next = count + 1;
 
-    // Clicking the already-selected card deselects it
-    if (clicked === selectedCard) {
-      deselect();
-    } else {
+    if (next === 1) {
+      cardClickCount.set(clicked, 1);
       select(clicked);
+    } else if (next === 2) {
+      cardClickCount.set(clicked, 2);
+      isExpanded = true;
+      isAnimating = true;
+      backButton.style.opacity = "1";
+      backButton.style.pointerEvents = "auto";
     }
   } else {
-    // Clicked empty space — deselect
-    if (selectedCard) deselect();
+    if (selectedCard && !isExpanded) {
+      cardClickCount.set(selectedCard, 0);
+      deselect();
+    }
   }
 });
 
 function select(card: THREE.Mesh) {
   selectedCard = card;
   isAnimating = true;
-  controls.enabled = false;
+  isExpanded = false;
+  cardRotationY = 0;
+  card.rotation.y = 0;
+  card.rotation.z = 0;
+  controls.enableRotate = false;
+  controls.enableZoom = false;
   label.style.opacity = "1";
-  label.textContent = `Card ${cards.indexOf(card) + 1}`; // or any text per card
+  label.textContent = `Card ${cards.indexOf(card) + 1}`;
 }
 
 function deselect() {
+  if (selectedCard) {
+    selectedCard.rotation.y = 0;
+    selectedCard.rotation.z = 0;
+  }
+  cardRotationY = 0;
+  isExpanded = false;
   selectedCard = null;
   isAnimating = true;
-  controls.enabled = true;
+  controls.enableRotate = true;
+  controls.enableZoom = true;
   label.style.opacity = "0";
+  backButton.style.opacity = "0";
+  backButton.style.pointerEvents = "none";
 }
 
 // =====================
 // ANIMATION LOOP
 // =====================
 
-const lerpAlpha = 0.08; // lower = smoother/slower, higher = snappier
+const lerpAlpha = 0.08;
+
+// How close to camera the card flies when expanded
+function getExpandedPosition(): THREE.Vector3 {
+  return new THREE.Vector3(0, 3, 3);
+}
 
 function animate() {
   requestAnimationFrame(animate);
@@ -303,13 +343,35 @@ function animate() {
 
     cards.forEach((card) => {
       const orig = originalStates.get(card)!;
+      const clickCount = cardClickCount.get(card) ?? 0;
 
       if (card === selectedCard) {
-        const targetPos = getRaisedPosition();
-        lerpVector3(card.position, targetPos, lerpAlpha);
-        card.rotation.x += (-0.4 - card.rotation.x) * lerpAlpha;
-
         lerpVector3(controls.target, getRaisedCameraTarget(), lerpAlpha);
+
+        if (clickCount === 1) {
+          // Slide up
+          lerpVector3(card.position, getRaisedPosition(), lerpAlpha);
+          card.rotation.x += (-0.3 - card.rotation.x) * lerpAlpha;
+          card.rotation.y += (0 - card.rotation.y) * lerpAlpha;
+
+          if (card.position.distanceTo(getRaisedPosition()) > 0.01)
+            stillMoving = true;
+        } else if (clickCount === 2) {
+          // Fly toward camera and fill view
+          const expandedPos = getExpandedPosition();
+          lerpVector3(card.position, expandedPos, lerpAlpha);
+          card.rotation.x += (-0.15 - card.rotation.x) * lerpAlpha;
+          card.rotation.y += (0 - card.rotation.y) * lerpAlpha;
+          card.rotation.z += (0 - card.rotation.z) * lerpAlpha;
+
+          // Scale up to fill canvas
+          const targetScaley = 3;
+          const targetScalex = 4;
+          card.scale.x += (targetScalex - card.scale.x) * lerpAlpha;
+          card.scale.y += (targetScaley - card.scale.y) * lerpAlpha;
+
+          if (card.position.distanceTo(expandedPos) > 0.01) stillMoving = true;
+        }
 
         const pos = card.position.clone();
         pos.project(camera);
@@ -317,18 +379,20 @@ function animate() {
         const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
         label.style.left = `${x}px`;
         label.style.top = `${y - 100}px`;
-
-        if (card.position.distanceTo(targetPos) > 0.01) stillMoving = true;
       } else {
-        // Return card to its original position and rotation
         lerpVector3(card.position, orig.position, lerpAlpha);
         card.rotation.x += (orig.rotation.x - card.rotation.x) * lerpAlpha;
+        card.rotation.y += (orig.rotation.y - card.rotation.y) * lerpAlpha;
+        card.rotation.z += (orig.rotation.z - card.rotation.z) * lerpAlpha;
+
+        // Reset scale
+        card.scale.x += (1 - card.scale.x) * lerpAlpha;
+        card.scale.y += (1 - card.scale.y) * lerpAlpha;
 
         if (card.position.distanceTo(orig.position) > 0.01) stillMoving = true;
       }
     });
 
-    // Camera target returns to basket when nothing selected
     if (!selectedCard) {
       lerpVector3(controls.target, getBasketCameraTarget(), lerpAlpha);
     }
