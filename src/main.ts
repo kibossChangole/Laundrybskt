@@ -359,6 +359,44 @@ window.addEventListener("click", (event) => {
           label.style.opacity = "1";
           label.style.pointerEvents = "auto";
 
+          const carouselImages =
+            Array.isArray(data.carouselImages) && data.carouselImages.length > 0
+              ? data.carouselImages
+              : [data.coverMeshTexture];
+          const slideCount = carouselImages.length;
+          const trackWidth = `${slideCount * 100}%`;
+          const animationDuration = Math.max(slideCount * 4, 12);
+          const slideMarkup = carouselImages
+            .map(
+              (imagePath: string, index: number) => `
+        <div class="carousel-slide">
+          <img
+            class="carousel-image"
+            src="${imagePath}"
+            alt="${data.title} preview ${index + 1}"
+            loading="lazy"
+            decoding="async"
+            draggable="false"
+          />
+          <div class="carousel-overlay"></div>
+        </div>`,
+            )
+            .join("");
+
+          const keyframeSteps: string[] = [];
+          if (slideCount > 1) {
+            const segment = 100 / slideCount;
+            for (let i = 0; i < slideCount; i += 1) {
+              const start = i * segment;
+              const holdEnd = Math.min(start + segment * 0.72, 99.5);
+              const offset = -i * (100 / slideCount);
+              keyframeSteps.push(
+                `${start.toFixed(2)}%, ${holdEnd.toFixed(2)}% { transform: translateX(${offset}%); }`,
+              );
+            }
+            keyframeSteps.push("100% { transform: translateX(0%); }");
+          }
+
           // Dynamically read from our custom manifest keys
           label.innerHTML = `
   <div class="parallax-wrapper" style="
@@ -375,27 +413,25 @@ window.addEventListener("click", (event) => {
       top: 0;
       left: 0;
       width: 100%;
-      height: 74vh; 
+      height: 74vh;
       z-index: 1;
       overflow: hidden;
       pointer-events: none;
     ">
-      <div class="carousel-track" style="display: flex; width: 300%; height: 100%; animation: carouselScroll 12s infinite ease-in-out;">
-        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('${data.carouselImages[0]}') center/cover no-repeat;"></div>
-        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('${data.carouselImages[1]}') center/cover no-repeat;"></div>
-        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('${data.carouselImages[2]}') center/cover no-repeat;"></div>
+      <div class="carousel-track" style="display: flex; width: ${trackWidth}; height: 100%; ${slideCount > 1 ? `animation: carouselScroll ${animationDuration}s infinite ease-in-out;` : ""}">
+        ${slideMarkup}
       </div>
     </div>
 
     <div class="scroll-content" style="
       position: relative;
       z-index: 2;
-      margin-top: -15vh; 
+      margin-top: -15vh;
       background: #ffffff;
       color: #1e1e1e;
       padding: 3rem 2rem;
       min-height: 60vh;
-      box-shadow: 0 -15px 30px rgba(0,0,0,0.5); 
+      box-shadow: 0 -15px 30px rgba(0,0,0,0.5);
       box-sizing: border-box;
       border-radius: 0px 120px 0px 0;
     ">
@@ -424,11 +460,51 @@ window.addEventListener("click", (event) => {
   </div>
 
   <style>
+    .carousel-slide {
+      position: relative;
+      flex: 0 0 ${100 / slideCount}%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .carousel-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      transform: scale(1.01);
+    }
+
+    .carousel-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.45));
+    }
+
     @keyframes carouselScroll {
-      0%, 25%   { transform: translateX(0); }
-      33%, 58%  { transform: translateX(-33.33%); }
-      66%, 91%  { transform: translateX(-66.66%); }
-      100%      { transform: translateX(0); }
+      ${slideCount > 1 ? keyframeSteps.join("\n      ") : "0%, 100% { transform: translateX(0); }"}
+    }
+
+    @media (max-width: 768px) {
+      .carousel-bg {
+        height: 46vh !important;
+      }
+
+      .scroll-content {
+        margin-top: -8vh !important;
+        padding: 1.6rem 1rem !important;
+        border-radius: 18px 18px 0 0 !important;
+      }
+
+      .scroll-content h3 {
+        font-size: 1.6rem !important;
+      }
+
+      .scroll-content h4 {
+        font-size: 0.9rem !important;
+        line-height: 1.4;
+      }
     }
   </style>
 `;
