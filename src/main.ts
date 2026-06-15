@@ -1,10 +1,12 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { cardDataManifest } from "./manifest";
 
 // Scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xd97d55);
+const textureLoader = new THREE.TextureLoader();
 
 const aspectRatio = window.innerWidth / window.innerHeight;
 
@@ -37,14 +39,14 @@ window.addEventListener("resize", () => {
     Math.min(window.devicePixelRatio, dynamicPixelRatio, maxPixelRatio),
   );
   directionalLight.shadow.mapSize.width = window.innerWidth < 768 ? 1024 : 2048;
-  directionalLight.shadow.mapSize.height = window.innerWidth < 768 ? 1024 : 2048;
+  directionalLight.shadow.mapSize.height =
+    window.innerWidth < 768 ? 1024 : 2048;
   directionalLight.shadow.map?.dispose();
   renderer.shadowMap.needsUpdate = true;
   lerpAlpha = getLerpAlphaForViewport();
 });
 
 //Card divs
-
 const label = document.getElementById("card-label")!;
 
 function getMaxPixelRatio() {
@@ -52,7 +54,7 @@ function getMaxPixelRatio() {
 }
 
 function getLerpAlphaForViewport() {
-  return window.innerWidth < 768 ? 0.16 : 0.08;
+  return window.innerWidth < 768 ? 0.12 : 0.08;
 }
 
 const MIN_PIXEL_RATIO = 1;
@@ -153,6 +155,19 @@ ground.receiveShadow = true;
 scene.add(ground);
 
 // =====================
+// TEXTURE SELECTION RESOURCE ARRAY
+// =====================
+// Files in public/ are served from root "/" directly without writing out the public folder name
+const cardTextures = [
+  "/kanban.png",
+  "/gt3rs.png",
+  "https://picsum.photos/id/12/800/800",
+  "https://picsum.photos/id/13/800/800",
+  "https://picsum.photos/id/14/800/800",
+  "https://picsum.photos/id/15/800/800",
+];
+
+// =====================
 // MODEL LOADER
 // =====================
 
@@ -195,7 +210,7 @@ loader.load(
     scene.add(model);
 
     // =====================
-    // VINYL CARDS
+    // VINYL CARDS GENERATOR LOOP (RESTORED)
     // =====================
 
     const basketBox = new THREE.Box3().setFromObject(model);
@@ -206,14 +221,19 @@ loader.load(
     const cardThickness = 0.015;
     const stackBaseY = basketBox.min.y + basketSize.y * 0.01;
     const leanAngle = Math.PI * -0.1;
-    const cardColors = [
-      0x5a9cb5, 0xface68, 0xfaac68, 0xfa6868, 0xb1c29e, 0xffb4a2,
-    ];
 
     for (let i = 0; i < 6; i++) {
       const geometry = new THREE.BoxGeometry(cardSize, cardSize, cardThickness);
+
+      // Get the dedicated data object for this index
+      const currentManifest = cardDataManifest[i];
+
+      // Load texture using our new manifest structure
+      const texture = textureLoader.load(currentManifest.coverMeshTexture);
+      texture.colorSpace = THREE.SRGBColorSpace;
+
       const material = new THREE.MeshStandardMaterial({
-        color: cardColors[i],
+        map: texture,
         roughness: 0.4,
         metalness: 0.1,
       });
@@ -221,6 +241,10 @@ loader.load(
       const card = new THREE.Mesh(geometry, material);
       card.castShadow = true;
       card.receiveShadow = true;
+
+      // --- THE SECRET SAUCE ---
+      // Store the entire data config directly on the 3D object userData property
+      card.userData = currentManifest;
 
       const pos = new THREE.Vector3(
         basketCenter.x,
@@ -231,7 +255,6 @@ loader.load(
       card.position.copy(pos);
       card.rotation.x = leanAngle;
 
-      // Save original state
       originalStates.set(card, {
         position: pos.clone(),
         rotation: card.rotation.clone(),
@@ -274,6 +297,9 @@ const cardClickCount = new Map<THREE.Mesh, number>();
 const cardIndexMap = new Map<THREE.Mesh, number>();
 let cardRotationY = 0;
 let isExpanded = false;
+let isGameViewActive = false;
+let isGameViewTransitioning = false;
+const GAME_VIEW_TRANSITION_MS = 850;
 
 // Back button
 const backButton = document.getElementById("back-button")!;
@@ -285,7 +311,8 @@ backButton.addEventListener("click", () => {
 });
 
 window.addEventListener("click", (event) => {
-  // Ignore clicks on the back button or elements inside it
+  if (isGameViewActive || isGameViewTransitioning) return;
+
   const targetElement = event.target as HTMLElement;
   if (
     targetElement.id === "back-button" ||
@@ -311,24 +338,28 @@ window.addEventListener("click", (event) => {
 
     if (currentCount === 0) {
       cardClickCount.set(clicked, 1);
-      select(clicked); // Keeps label hidden on first click
+      select(clicked);
     } else if (currentCount === 1) {
       cardClickCount.set(clicked, 2);
       isExpanded = true;
       isAnimating = true;
 
-      // Set fullscreen bounds once; avoid layout writes in animate().
+      // Unpack all of our custom data from the clicked 3D mesh!
+      const data = clicked.userData;
+
       label.style.position = "fixed";
       label.style.top = "0";
       label.style.left = "0";
       label.style.width = "100vw";
-      label.style.height = "100vh";
-      label.style.transform = "none";
+      label.style.height = "101vh";
+      label.style.transform = "translate3d(0px, 0px, 0px)";
 
       setTimeout(() => {
         if (selectedCard === clicked && isExpanded) {
           label.style.opacity = "1";
           label.style.pointerEvents = "auto";
+
+          // Dynamically read from our custom manifest keys
           label.innerHTML = `
   <div class="parallax-wrapper" style="
     position: relative;
@@ -344,39 +375,43 @@ window.addEventListener("click", (event) => {
       top: 0;
       left: 0;
       width: 100%;
-      height: 74vh; /* Takes up exactly half of the device viewport height */
+      height: 74vh; 
       z-index: 1;
       overflow: hidden;
       pointer-events: none;
     ">
       <div class="carousel-track" style="display: flex; width: 300%; height: 100%; animation: carouselScroll 12s infinite ease-in-out;">
-        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), url('https://picsum.photos/id/10/1200/800') center/cover no-repeat;"></div>
-        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), url('https://picsum.photos/id/11/1200/800') center/cover no-repeat;"></div>
-        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), url('https://picsum.photos/id/12/1200/800') center/cover no-repeat;"></div>
+        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('${data.carouselImages[0]}') center/cover no-repeat;"></div>
+        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('${data.carouselImages[1]}') center/cover no-repeat;"></div>
+        <div style="width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('${data.carouselImages[2]}') center/cover no-repeat;"></div>
       </div>
     </div>
 
     <div class="scroll-content" style="
       position: relative;
       z-index: 2;
-      margin-top: -15vh; /* Pulls text section up over the viewport carousel */
+      margin-top: -15vh; 
       background: #ffffff;
       color: #1e1e1e;
       padding: 3rem 2rem;
       min-height: 60vh;
       box-shadow: 0 -15px 30px rgba(0,0,0,0.5);
       box-sizing: border-box;
-         border-radius: 0px 120px 0px 0;
+      border-radius: 0px 120px 0px 0;
     ">
       <div style="max-width: 600px; margin: 0 auto;">
-        <h3 style="margin-top: 0; font-size: 2.2rem; margin-bottom: 1.5rem;">Card ${cardIndexMap.get(clicked) ?? 1}</h3>
-        <p style="font-size: 1.1rem; line-height: 1.7; color: #ccc; margin-bottom: 1.5rem;">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+        <h3 style="margin-top: 0; font-size: 2.2rem; margin-bottom: 0.2rem;">${data.title}</h3>
+        <h4 style="margin-top: 0; font-size: 1.1rem; color: #777; font-weight: 400; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2rem;">${data.subtitle}</h4>
+        
+        <p style="font-size: 0.8rem; color: #aaa; text-transform: uppercase; margin-bottom: 0.5rem;">Card Cover Artwork Reference:</p>
+        <div style="width: 120px; height: 120px; border-radius: 8px; margin-bottom: 2.5rem; background: url('${data.coverMeshTexture}') center/cover no-repeat; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+
+        <p style="font-size: 1.1rem; line-height: 1.7; color: #333; margin-bottom: 1.5rem;">
+          ${data.description}
         </p>
-        <p style="font-size: 1.1rem; line-height: 1.7; color: #ccc;">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+        
+        <p style="font-size: 1.1rem; line-height: 1.7; color: #666; font-style: italic;">
+          ${data.additionalText}
         </p>
         <div style="height: 150px;"></div>
       </div>
@@ -418,12 +453,13 @@ function select(card: THREE.Mesh) {
 
   label.style.opacity = "0";
   label.style.pointerEvents = "none";
+  label.style.zIndex = "20";
   label.style.position = "absolute";
   label.style.width = "auto";
   label.style.height = "auto";
   label.style.top = "0";
   label.style.left = "0";
-  label.style.transform = "translate3d(-50%, -50%, 0)";
+  label.style.transform = "translate3d(0px, 0px, 0px)";
   label.innerHTML = "";
 }
 
@@ -431,7 +467,7 @@ function deselect() {
   if (selectedCard) {
     selectedCard.rotation.y = 0;
     selectedCard.rotation.z = 0;
-    cardClickCount.set(selectedCard, 0); // Reset the click tracker for this card
+    cardClickCount.set(selectedCard, 0);
   }
   cardRotationY = 0;
   isExpanded = false;
@@ -442,12 +478,13 @@ function deselect() {
 
   label.style.opacity = "0";
   label.style.pointerEvents = "none";
+  label.style.zIndex = "20";
   label.style.position = "absolute";
   label.style.width = "auto";
   label.style.height = "auto";
   label.style.top = "0";
   label.style.left = "0";
-  label.style.transform = "translate3d(-50%, -50%, 0)";
+  label.style.transform = "translate3d(0px, 0px, 0px)";
   label.innerHTML = "";
 
   backButton.style.opacity = "0";
@@ -486,9 +523,9 @@ function tunePixelRatio(frameMs: number) {
   const maxPixelRatio = getMaxPixelRatio();
   let nextPixelRatio = dynamicPixelRatio;
 
-  // Reduce GPU load when sustained frame time rises; recover quality slowly.
   if (avgFrameMs > 19) nextPixelRatio -= 0.1;
-  if (avgFrameMs < 14 && dynamicPixelRatio < maxPixelRatio) nextPixelRatio += 0.05;
+  if (avgFrameMs < 14 && dynamicPixelRatio < maxPixelRatio)
+    nextPixelRatio += 0.05;
 
   nextPixelRatio = THREE.MathUtils.clamp(
     nextPixelRatio,
@@ -498,7 +535,9 @@ function tunePixelRatio(frameMs: number) {
 
   if (Math.abs(nextPixelRatio - dynamicPixelRatio) >= 0.025) {
     dynamicPixelRatio = nextPixelRatio;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, dynamicPixelRatio));
+    renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio, dynamicPixelRatio),
+    );
     renderer.shadowMap.needsUpdate = true;
     adaptiveCooldown = 2;
   }
@@ -522,7 +561,6 @@ function animate() {
         lerpVector3(controls.target, RAISED_CAMERA_TARGET, lerpAlpha);
 
         if (clickCount === 1) {
-          // Slide up
           lerpVector3(card.position, RAISED_POSITION, lerpAlpha);
           card.rotation.x += (-0.3 - card.rotation.x) * lerpAlpha;
           card.rotation.y += (0 - card.rotation.y) * lerpAlpha;
@@ -530,13 +568,11 @@ function animate() {
           if (card.position.distanceTo(RAISED_POSITION) > 0.01)
             stillMoving = true;
         } else if (clickCount === 2) {
-          // Fly toward camera and fill view
           lerpVector3(card.position, EXPANDED_POSITION, lerpAlpha);
           card.rotation.x += (-0.27 - card.rotation.x) * lerpAlpha;
           card.rotation.y += (0 - card.rotation.y) * lerpAlpha;
           card.rotation.z += (0 - card.rotation.z) * lerpAlpha;
 
-          // Scale up to fill canvas
           const targetScaley = 3;
           const targetScalex = 4;
           card.scale.x += (targetScalex - card.scale.x) * lerpAlpha;
@@ -546,7 +582,6 @@ function animate() {
             stillMoving = true;
         }
 
-        // Keep per-frame DOM writes minimal: only update tracked position on click 1.
         if (clickCount === 1) {
           projectedPos.copy(card.position).project(camera);
           const x = (projectedPos.x * 0.5 + 0.5) * window.innerWidth;
@@ -559,7 +594,6 @@ function animate() {
         card.rotation.y += (orig.rotation.y - card.rotation.y) * lerpAlpha;
         card.rotation.z += (orig.rotation.z - card.rotation.z) * lerpAlpha;
 
-        // Reset scale
         card.scale.x += (1 - card.scale.x) * lerpAlpha;
         card.scale.y += (1 - card.scale.y) * lerpAlpha;
 
@@ -584,3 +618,56 @@ function animate() {
 }
 
 animate();
+
+// =====================
+// GAME VIEW TRANSITION HANDLER
+// =====================
+
+const gameView = document.getElementById("game-view")!;
+const closeGameBtn = document.getElementById("close-game-btn")!;
+const gameButtons = document.querySelectorAll(".game-btn");
+
+const canvasElement = renderer.domElement;
+canvasElement.style.transition =
+  "transform 0.8s cubic-bezier(0.77, 0, 0.175, 1)";
+
+gameButtons.forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    isGameViewActive = true;
+    isGameViewTransitioning = true;
+
+    if (selectedCard) {
+      cardClickCount.set(selectedCard, 0);
+      deselect();
+    }
+
+    canvasElement.style.transform = "translateY(-100vh)";
+    gameView.style.transform = "translateY(0)";
+    gameView.style.opacity = "1";
+    gameView.style.pointerEvents = "auto";
+
+    controls.enabled = false;
+
+    setTimeout(() => {
+      isGameViewTransitioning = false;
+    }, GAME_VIEW_TRANSITION_MS);
+  });
+});
+
+closeGameBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  isGameViewTransitioning = true;
+
+  canvasElement.style.transform = "translateY(0)";
+  gameView.style.transform = "translateY(100vh)";
+  gameView.style.opacity = "0";
+  gameView.style.pointerEvents = "none";
+
+  controls.enabled = true;
+
+  setTimeout(() => {
+    isGameViewActive = false;
+    isGameViewTransitioning = false;
+  }, GAME_VIEW_TRANSITION_MS);
+});
