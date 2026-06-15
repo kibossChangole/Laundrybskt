@@ -2,16 +2,21 @@ export const cardDataManifest = [
   {
     id: 1,
     coverMeshTexture: "/kanban.png", // Texture rendered on the 3D mesh
-    title: "Project Alpha: Genesis",
-    subtitle: "Core Engine Mechanics",
+    title: "Apex Kanban - Modern Stylised Kanban Board",
+    subtitle: "ESTABLISH SYSTEM ORDER.",
+    linkplace: "Live link",
+    link: "https://apex-team-board-web.vercel.app",
     description:
-      "This is a completely custom description specifically for card 1. You can outline your concept, project scope, or vinyl tracks here.",
+      "ApexTeamBoard is a polished Kanban experience built to feel fast, focused, and collaborative from the first click. The demo runs as a frontend-only SPA powered by React 18, TypeScript, Vite, React Router, and TanStack Query, with a sleek glassmorphism UI, Lucide icons, and persistent localStorage data. That means you can sign in, create tasks, move cards across Todo, In-Progress, and Done, and comment instantly, all without deploying a backend.",
+    secdescription:
+      "this demo showcases the product feel and interaction model, while the actual implementation adds the server-side guarantees teams need in real environments: persistent multi-user data, authenticated access control, validated inputs, and reliable API-driven state",
     additionalText:
-      "More deep-dive details that only appear on card 1's expanded layout.",
+      "Under the hood, the full version is designed as a complete monorepo stack: a TypeScript Express API with Zod validation, JWT authentication, bcrypt password hashing, and a Better-SQLite3 database for durable storage. Instead of the browser shim, the production flow uses real REST endpoints for auth, tasks, pagination, search, and comments, enforcing consistent error contracts and secure user isolation.",
     carouselImages: [
-      "https://picsum.photos/id/20/1200/800", // Slide 1
-      "https://picsum.photos/id/21/1200/800", // Slide 2
-      "https://picsum.photos/id/22/1200/800", // Slide 3
+      "kanban/1.png",
+      "kanban/2.png",
+      "kanban/3.png",
+      "kanban/4.png",
     ],
   },
   {

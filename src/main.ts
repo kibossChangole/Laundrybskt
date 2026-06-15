@@ -395,19 +395,24 @@ window.addEventListener("click", (event) => {
       color: #1e1e1e;
       padding: 3rem 2rem;
       min-height: 60vh;
-      box-shadow: 0 -15px 30px rgba(0,0,0,0.5);
+      box-shadow: 0 -15px 30px rgba(0,0,0,0.5); 
       box-sizing: border-box;
       border-radius: 0px 120px 0px 0;
     ">
       <div style="max-width: 600px; margin: 0 auto;">
         <h3 style="margin-top: 0; font-size: 2.2rem; margin-bottom: 0.2rem;">${data.title}</h3>
-        <h4 style="margin-top: 0; font-size: 1.1rem; color: #777; font-weight: 400; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2rem;">${data.subtitle}</h4>
+        <h4 style="margin-top: 0; font-size: 1.1rem; color: #777; font-weight: 400; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">${data.subtitle}</h4>
+        <a href="${data.link}" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; color: #777; text-transform: uppercase; margin-bottom: 2rem;">${data.linkplace}</a>
         
         <p style="font-size: 0.8rem; color: #aaa; text-transform: uppercase; margin-bottom: 0.5rem;">Card Cover Artwork Reference:</p>
         <div style="width: 120px; height: 120px; border-radius: 8px; margin-bottom: 2.5rem; background: url('${data.coverMeshTexture}') center/cover no-repeat; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
 
         <p style="font-size: 1.1rem; line-height: 1.7; color: #333; margin-bottom: 1.5rem;">
           ${data.description}
+        </p>
+
+         <p style="font-size: 1.1rem; line-height: 1.7; color: #333; margin-bottom: 1.5rem;">
+          ${data.secdescription}
         </p>
         
         <p style="font-size: 1.1rem; line-height: 1.7; color: #666; font-style: italic;">
