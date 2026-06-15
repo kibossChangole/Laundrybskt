@@ -54,7 +54,7 @@ function getMaxPixelRatio() {
 }
 
 function getLerpAlphaForViewport() {
-  return window.innerWidth < 768 ? 0.12 : 0.08;
+  return window.innerWidth < 768 ? 0.16 : 0.08;
 }
 
 const MIN_PIXEL_RATIO = 1;
