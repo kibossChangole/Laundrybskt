@@ -8,7 +8,7 @@ const scene = new THREE.Scene();
 const textureLoader = new THREE.TextureLoader();
 
 const colorHex = "#c24814ff"; // target color
-const markerColor = 0xffffff; // marker color
+const markerColor = "#d3d3d3ff"; // marker color
 
 //
 //ROUGH TEXTURED BACKGROUND
@@ -41,7 +41,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   // 7. Make it repeat seamlessly across the background
   tintedTexture.wrapS = THREE.RepeatWrapping;
   tintedTexture.wrapT = THREE.RepeatWrapping;
-  tintedTexture.repeat.set(5, 2); // Adjust to make the roughness tighter or larger
+  tintedTexture.repeat.set(5, 5); // Adjust to make the roughness tighter or larger
 
   // 8. Apply to your scene
   scene.background = tintedTexture;
@@ -75,7 +75,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   );
 
   const lineWidth = outerRadius - innerRadius - 0.2;
-  const lineHeight = outerRadius * 5; // 48 units long!
+  const lineHeight = outerRadius * 10; // 48 units long!
   const lineGeometry = new THREE.PlaneGeometry(lineWidth, lineHeight);
 
   // 3. Create Custom Shader Logic function (so we can apply it to both materials)
@@ -134,7 +134,10 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   basketballMarkingGroup.rotation.x = -Math.PI / 2;
   basketballMarkingGroup.position.set(0, -0.8, 0);
 
-  scene.add(basketballMarkingGroup);
+  //
+  //omitted rings
+  //
+  //scene.add(basketballMarkingGroup);
 });
 
 //
