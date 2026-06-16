@@ -18,9 +18,9 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   // 1. Optimize texture mapping for a painted look
   loadedTexture.wrapS = THREE.RepeatWrapping;
   loadedTexture.wrapT = THREE.RepeatWrapping;
-  loadedTexture.repeat.set(1, 1);
+  loadedTexture.repeat.set(5, 5);
 
-  // 2. Define the Ring Geometry (Outer radius is 6)
+  // 2. Define Geometries
   const innerRadius = 5;
   const outerRadius = 6;
   const thetaSegments = 128;
@@ -37,60 +37,66 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
     thetaLength,
   );
 
-  // Define the Vertical Court Line Geometry
   const lineWidth = outerRadius - innerRadius - 0.2;
-  const lineHeight = outerRadius * 8;
+  const lineHeight = outerRadius * 5; // 48 units long!
   const lineGeometry = new THREE.PlaneGeometry(lineWidth, lineHeight);
 
-  // 3. Create the Material (Configured for edge smearing)
-  const material = new THREE.MeshStandardMaterial({
-    color: markerColor,
-    map: loadedTexture,
-    roughness: 0.1,
-    metalness: 0.2,
-    transparent: true, // CRITICAL: Must be true for the shader to smear/discard edges
-    opacity: 0.9,
-    side: THREE.DoubleSide,
-  });
-
-  // 4. Inject Custom Shader Logic for "Bad Paint" Smears
-  material.onBeforeCompile = (shader) => {
+  // 3. Create Custom Shader Logic function (so we can apply it to both materials)
+  const applyBadPaintShader = (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <opaque_fragment>",
       `
-      // Read the texture color value at this pixel (using the red channel as a noise map)
       float paintNoise = texture2D(map, vMapUv).r;
-      
-      // Completely discard pixels where the texture is too dark (creates jagged chips)
-      if (paintNoise < 0.55) {
+      if (paintNoise < 0.65) {
           discard;
       }
-      
-      // Smeared edge fading: smoothly fade alpha based on texture roughness
-      // Adjust 0.3 and 0.7 to change how wide or narrow the smear look is
-      gl_FragColor.a *= smoothstep(0.3, 0.7, paintNoise);
-      
+      gl_FragColor.a *= smoothstep(0.2, 0.5, paintNoise);
       #include <opaque_fragment>
       `,
     );
   };
 
-  // 5. Combine into Meshes
-  const ringMesh = new THREE.Mesh(ringGeometry, material);
-  const lineMesh = new THREE.Mesh(lineGeometry, material);
+  // 4. Material for the RING (Stays at 1, 1 repeat)
+  const ringMaterial = new THREE.MeshStandardMaterial({
+    color: markerColor,
+    map: loadedTexture,
+    roughness: 0.1,
+    metalness: 0.1,
+    transparent: false,
+    opacity: 0.9,
+    side: THREE.DoubleSide,
+  });
+  ringMaterial.onBeforeCompile = applyBadPaintShader;
 
-  // Create a group to manage the entire layout together
+  // 5. Material for the LINE (Cloned, with high texture repetition to stop the stretching)
+  const lineMaterial = ringMaterial.clone();
+
+  // Clone the texture map so we don't accidentally change the ring's texture scale
+  lineMaterial.map = loadedTexture.clone();
+  lineMaterial.map.needsUpdate = true;
+
+  // Stretch the texture 1 time wide, but repeat it 8 times along its 48-unit length!
+  lineMaterial.map.repeat.set(1, 8);
+
+  // Re-link the custom shader to the cloned material
+  lineMaterial.onBeforeCompile = applyBadPaintShader;
+
+  // 6. Combine into Meshes using their respective materials
+  const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+  const lineMesh = new THREE.Mesh(lineGeometry, lineMaterial);
+
+  // Offset the line slightly on local Z so it doesn't Z-fight or overlap cleanly with the ring
+  lineMesh.position.z = -0.001;
+
+  // Create group
   const basketballMarkingGroup = new THREE.Group();
   basketballMarkingGroup.add(ringMesh);
   basketballMarkingGroup.add(lineMesh);
 
-  // 6. Positioning and Orientation
+  // Positioning and Orientation
   basketballMarkingGroup.rotation.x = -Math.PI / 2;
+  basketballMarkingGroup.position.set(0, -0.8, 0);
 
-  // Lift the group slightly up to prevent z-fighting with your floor
-  basketballMarkingGroup.position.set(0, -0.9, 0);
-
-  // 7. Add the group to your scene
   scene.add(basketballMarkingGroup);
 });
 
