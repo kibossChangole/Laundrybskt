@@ -191,7 +191,7 @@ function getLerpAlphaForViewport() {
   return window.innerWidth < 768 ? 0.16 : 0.08;
 }
 
-const MIN_PIXEL_RATIO = 3;
+const MIN_PIXEL_RATIO = 1.5;
 let dynamicPixelRatio = Math.min(window.devicePixelRatio, getMaxPixelRatio());
 
 // Renderer
