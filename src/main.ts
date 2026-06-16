@@ -5,11 +5,134 @@ import { cardDataManifest } from "./manifest";
 
 // Scene
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xd97d55);
 const textureLoader = new THREE.TextureLoader();
 
-const aspectRatio = window.innerWidth / window.innerHeight;
+const colorHex = "#c24814ff"; // target color
+const markerColor = 0xffffff; // marker color
 
+//
+/// WHITE CIRCLE MARKING
+//
+
+textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
+  // 1. Optimize texture mapping for a painted look
+  loadedTexture.wrapS = THREE.RepeatWrapping;
+  loadedTexture.wrapT = THREE.RepeatWrapping;
+  loadedTexture.repeat.set(1, 1);
+
+  // 2. Define the Ring Geometry (Outer radius is 6)
+  const innerRadius = 5;
+  const outerRadius = 6;
+  const thetaSegments = 128;
+  const phiSegments = 1;
+  const thetaStart = 0;
+  const thetaLength = 2 * Math.PI;
+
+  const ringGeometry = new THREE.RingGeometry(
+    innerRadius,
+    outerRadius,
+    thetaSegments,
+    phiSegments,
+    thetaStart,
+    thetaLength,
+  );
+
+  // Define the Vertical Court Line Geometry
+  const lineWidth = outerRadius - innerRadius - 0.2;
+  const lineHeight = outerRadius * 8;
+  const lineGeometry = new THREE.PlaneGeometry(lineWidth, lineHeight);
+
+  // 3. Create the Material (Configured for edge smearing)
+  const material = new THREE.MeshStandardMaterial({
+    color: markerColor,
+    map: loadedTexture,
+    roughness: 0.1,
+    metalness: 0.2,
+    transparent: true, // CRITICAL: Must be true for the shader to smear/discard edges
+    opacity: 0.9,
+    side: THREE.DoubleSide,
+  });
+
+  // 4. Inject Custom Shader Logic for "Bad Paint" Smears
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <opaque_fragment>",
+      `
+      // Read the texture color value at this pixel (using the red channel as a noise map)
+      float paintNoise = texture2D(map, vMapUv).r;
+      
+      // Completely discard pixels where the texture is too dark (creates jagged chips)
+      if (paintNoise < 0.55) {
+          discard;
+      }
+      
+      // Smeared edge fading: smoothly fade alpha based on texture roughness
+      // Adjust 0.3 and 0.7 to change how wide or narrow the smear look is
+      gl_FragColor.a *= smoothstep(0.3, 0.7, paintNoise);
+      
+      #include <opaque_fragment>
+      `,
+    );
+  };
+
+  // 5. Combine into Meshes
+  const ringMesh = new THREE.Mesh(ringGeometry, material);
+  const lineMesh = new THREE.Mesh(lineGeometry, material);
+
+  // Create a group to manage the entire layout together
+  const basketballMarkingGroup = new THREE.Group();
+  basketballMarkingGroup.add(ringMesh);
+  basketballMarkingGroup.add(lineMesh);
+
+  // 6. Positioning and Orientation
+  basketballMarkingGroup.rotation.x = -Math.PI / 2;
+
+  // Lift the group slightly up to prevent z-fighting with your floor
+  basketballMarkingGroup.position.set(0, -0.9, 0);
+
+  // 7. Add the group to your scene
+  scene.add(basketballMarkingGroup);
+});
+
+//
+//ROUGH TEXTURED BACKGROUND
+//
+
+// 1. Load your seamless rough grayscale texture
+textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
+  const image = loadedTexture.image;
+
+  // 2. Create an off-screen canvas matching the image size
+  const canvas = document.createElement("canvas");
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext("2d");
+
+  // 3. Draw the rough texture onto the canvas first
+  ctx.drawImage(image, 0, 0);
+
+  // 4. Use 'multiply' blend mode to bake the color into the texture
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = colorHex;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 5. Reset composite operation back to normal
+  ctx.globalCompositeOperation = "source-over";
+
+  // 6. Convert the tinted canvas into a Three.js texture
+  const tintedTexture = new THREE.CanvasTexture(canvas);
+
+  // 7. Make it repeat seamlessly across the background
+  tintedTexture.wrapS = THREE.RepeatWrapping;
+  tintedTexture.wrapT = THREE.RepeatWrapping;
+  tintedTexture.repeat.set(6, 4); // Adjust to make the roughness tighter or larger
+
+  // 8. Apply to your scene
+  scene.background = tintedTexture;
+});
+
+//aspect ratio and field of view
+const aspectRatio = window.innerWidth / window.innerHeight;
 const camera = new THREE.PerspectiveCamera(
   aspectRatio > 1.6 ? 50 : 60, // narrower FOV on wide screens, wider on tall/mobile
   aspectRatio,
@@ -17,7 +140,7 @@ const camera = new THREE.PerspectiveCamera(
   1000,
 );
 
-camera.position.set(0, 2.5, 6);
+camera.position.set(0, 4, 4.5);
 
 function getDynamicFOV() {
   const aspect = window.innerWidth / window.innerHeight;
@@ -84,8 +207,8 @@ controls.addEventListener("change", () => {
 });
 
 // Limit vertical orbit
-controls.minPolarAngle = Math.PI * 0.1;
-controls.maxPolarAngle = Math.PI * 0.4;
+controls.minPolarAngle = Math.PI * 0.2;
+controls.maxPolarAngle = Math.PI * 0.2;
 
 // Lock horizontal rotation completely
 controls.minAzimuthAngle = 0.0;
@@ -643,7 +766,7 @@ function animate() {
 
         if (clickCount === 1) {
           lerpVector3(card.position, RAISED_POSITION, lerpAlpha);
-          card.rotation.x += (-0.3 - card.rotation.x) * lerpAlpha;
+          card.rotation.x += (-0.9 - card.rotation.x) * lerpAlpha;
           card.rotation.y += (0 - card.rotation.y) * lerpAlpha;
 
           if (card.position.distanceTo(RAISED_POSITION) > 0.01)
