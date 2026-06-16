@@ -7,7 +7,7 @@ import { cardDataManifest } from "./manifest";
 const scene = new THREE.Scene();
 const textureLoader = new THREE.TextureLoader();
 
-const colorHex = "#c24814ff"; // target color
+const colorHex = "#0b0b0bff"; // target color
 const markerColor = "#d3d3d3ff"; // marker color
 
 //
@@ -41,7 +41,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   // 7. Make it repeat seamlessly across the background
   tintedTexture.wrapS = THREE.RepeatWrapping;
   tintedTexture.wrapT = THREE.RepeatWrapping;
-  tintedTexture.repeat.set(5, 5); // Adjust to make the roughness tighter or larger
+  tintedTexture.repeat.set(8, 4); // Adjust to make the roughness tighter or larger
 
   // 8. Apply to your scene
   scene.background = tintedTexture;
@@ -55,7 +55,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   // 1. Optimize texture mapping for a painted look
   loadedTexture.wrapS = THREE.RepeatWrapping;
   loadedTexture.wrapT = THREE.RepeatWrapping;
-  loadedTexture.repeat.set(5, 4);
+  loadedTexture.repeat.set(3, 3);
 
   // 2. Define Geometries
   const innerRadius = 5;
@@ -84,7 +84,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
       "#include <opaque_fragment>",
       `
       float paintNoise = texture2D(map, vMapUv).r;
-      if (paintNoise < 0.6) {
+      if (paintNoise < 0.5) {
           discard;
       }
       gl_FragColor.a *= smoothstep(0.3, 0.8, paintNoise);
@@ -99,8 +99,8 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
     map: loadedTexture,
     roughness: 0.1,
     metalness: 0.01,
-    transparent: false,
-    opacity: 0.5,
+    transparent: true,
+    opacity: 0.8,
     side: THREE.DoubleSide,
   });
   ringMaterial.onBeforeCompile = applyBadPaintShader;
@@ -128,7 +128,6 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   // Create group
   const basketballMarkingGroup = new THREE.Group();
   basketballMarkingGroup.add(ringMesh);
-  basketballMarkingGroup.add(lineMesh);
 
   // Positioning and Orientation
   basketballMarkingGroup.rotation.x = -Math.PI / 2;
@@ -137,7 +136,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   //
   //omitted rings
   //
-  //scene.add(basketballMarkingGroup);
+  scene.add(basketballMarkingGroup);
 });
 
 //
@@ -146,7 +145,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
 
 const aspectRatio = window.innerWidth / window.innerHeight;
 const camera = new THREE.PerspectiveCamera(
-  aspectRatio > 1.6 ? 50 : 60, // narrower FOV on wide screens, wider on tall/mobile
+  aspectRatio > 1.6 ? 40 : 70, // narrower FOV on wide screens, wider on tall/mobile
   aspectRatio,
   0.1,
   1000,
@@ -328,10 +327,22 @@ loader.load(
   (gltf) => {
     const model = gltf.scene;
 
+    // 1. Define the white color once outside the loop for performance
+    const whiteColor = new THREE.Color(0x808080);
+
     model.traverse((child: any) => {
       if (child.isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
+
+        // 2. Turn the material white
+        if (child.material) {
+          // Option A: Keep original material properties/textures, just force the tint to white
+          child.material.color.copy(whiteColor);
+
+          // Option B (Uncomment if needed): Completely replace with a flat white material
+          // child.material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        }
       }
     });
 
