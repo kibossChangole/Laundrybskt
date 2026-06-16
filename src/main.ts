@@ -191,7 +191,7 @@ function getLerpAlphaForViewport() {
   return window.innerWidth < 768 ? 0.16 : 0.08;
 }
 
-const MIN_PIXEL_RATIO = 1;
+const MIN_PIXEL_RATIO = 3;
 let dynamicPixelRatio = Math.min(window.devicePixelRatio, getMaxPixelRatio());
 
 // Renderer
@@ -232,11 +232,11 @@ controls.enableZoom = false;
 // =====================
 
 // Ambient Light
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
 scene.add(ambientLight);
 
 // Main Key Light
-const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 
 directionalLight.position.set(5, 10, 5);
 directionalLight.castShadow = true;
