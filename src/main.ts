@@ -11,6 +11,43 @@ const colorHex = "#c24814ff"; // target color
 const markerColor = 0xffffff; // marker color
 
 //
+//ROUGH TEXTURED BACKGROUND
+//
+
+// 1. Load your seamless rough grayscale texture
+textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
+  const image = loadedTexture.image;
+
+  // 2. Create an off-screen canvas matching the image size
+  const canvas = document.createElement("canvas");
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext("2d")!;
+
+  // 3. Draw the rough texture onto the canvas first
+  ctx.drawImage(image, 0, 0);
+
+  // 4. Use 'multiply' blend mode to bake the color into the texture
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = colorHex;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 5. Reset composite operation back to normal
+  ctx.globalCompositeOperation = "source-over";
+
+  // 6. Convert the tinted canvas into a Three.js texture
+  const tintedTexture = new THREE.CanvasTexture(canvas);
+
+  // 7. Make it repeat seamlessly across the background
+  tintedTexture.wrapS = THREE.RepeatWrapping;
+  tintedTexture.wrapT = THREE.RepeatWrapping;
+  tintedTexture.repeat.set(5, 2); // Adjust to make the roughness tighter or larger
+
+  // 8. Apply to your scene
+  scene.background = tintedTexture;
+});
+
+//
 /// WHITE CIRCLE MARKING
 //
 
@@ -18,7 +55,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   // 1. Optimize texture mapping for a painted look
   loadedTexture.wrapS = THREE.RepeatWrapping;
   loadedTexture.wrapT = THREE.RepeatWrapping;
-  loadedTexture.repeat.set(5, 5);
+  loadedTexture.repeat.set(5, 4);
 
   // 2. Define Geometries
   const innerRadius = 5;
@@ -47,10 +84,10 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
       "#include <opaque_fragment>",
       `
       float paintNoise = texture2D(map, vMapUv).r;
-      if (paintNoise < 0.65) {
+      if (paintNoise < 0.6) {
           discard;
       }
-      gl_FragColor.a *= smoothstep(0.2, 0.5, paintNoise);
+      gl_FragColor.a *= smoothstep(0.3, 0.8, paintNoise);
       #include <opaque_fragment>
       `,
     );
@@ -61,9 +98,9 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
     color: markerColor,
     map: loadedTexture,
     roughness: 0.1,
-    metalness: 0.1,
+    metalness: 0.01,
     transparent: false,
-    opacity: 0.9,
+    opacity: 0.5,
     side: THREE.DoubleSide,
   });
   ringMaterial.onBeforeCompile = applyBadPaintShader;
@@ -101,43 +138,9 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
 });
 
 //
-//ROUGH TEXTURED BACKGROUND
+//aspect ratio and field of view
 //
 
-// 1. Load your seamless rough grayscale texture
-textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
-  const image = loadedTexture.image;
-
-  // 2. Create an off-screen canvas matching the image size
-  const canvas = document.createElement("canvas");
-  canvas.width = image.width;
-  canvas.height = image.height;
-  const ctx = canvas.getContext("2d")!;
-
-  // 3. Draw the rough texture onto the canvas first
-  ctx.drawImage(image, 0, 0);
-
-  // 4. Use 'multiply' blend mode to bake the color into the texture
-  ctx.globalCompositeOperation = "multiply";
-  ctx.fillStyle = colorHex;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // 5. Reset composite operation back to normal
-  ctx.globalCompositeOperation = "source-over";
-
-  // 6. Convert the tinted canvas into a Three.js texture
-  const tintedTexture = new THREE.CanvasTexture(canvas);
-
-  // 7. Make it repeat seamlessly across the background
-  tintedTexture.wrapS = THREE.RepeatWrapping;
-  tintedTexture.wrapT = THREE.RepeatWrapping;
-  tintedTexture.repeat.set(6, 4); // Adjust to make the roughness tighter or larger
-
-  // 8. Apply to your scene
-  scene.background = tintedTexture;
-});
-
-//aspect ratio and field of view
 const aspectRatio = window.innerWidth / window.innerHeight;
 const camera = new THREE.PerspectiveCamera(
   aspectRatio > 1.6 ? 50 : 60, // narrower FOV on wide screens, wider on tall/mobile
@@ -779,7 +782,7 @@ function animate() {
             stillMoving = true;
         } else if (clickCount === 2) {
           lerpVector3(card.position, EXPANDED_POSITION, lerpAlpha);
-          card.rotation.x += (-0.27 - card.rotation.x) * lerpAlpha;
+          card.rotation.x += (-0.9 - card.rotation.x) * lerpAlpha;
           card.rotation.y += (0 - card.rotation.y) * lerpAlpha;
           card.rotation.z += (0 - card.rotation.z) * lerpAlpha;
 
