@@ -42,7 +42,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   const lineGeometry = new THREE.PlaneGeometry(lineWidth, lineHeight);
 
   // 3. Create Custom Shader Logic function (so we can apply it to both materials)
-  const applyBadPaintShader = (shader) => {
+  const applyBadPaintShader = (shader: any) => {
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <opaque_fragment>",
       `
@@ -112,7 +112,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   const canvas = document.createElement("canvas");
   canvas.width = image.width;
   canvas.height = image.height;
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d")!;
 
   // 3. Draw the rough texture onto the canvas first
   ctx.drawImage(image, 0, 0);
