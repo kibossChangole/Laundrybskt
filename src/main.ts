@@ -41,7 +41,7 @@ textureLoader.load("/roughconcretetexture.jpg", (loadedTexture) => {
   // 7. Make it repeat seamlessly across the background
   tintedTexture.wrapS = THREE.RepeatWrapping;
   tintedTexture.wrapT = THREE.RepeatWrapping;
-  tintedTexture.repeat.set(8, 4); // Adjust to make the roughness tighter or larger
+  tintedTexture.repeat.set(4, 3); // Adjust to make the roughness tighter or larger
 
   // 8. Apply to your scene
   scene.background = tintedTexture;
