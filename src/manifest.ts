@@ -3,7 +3,8 @@ export const cardDataManifest = [
     id: 1,
     coverMeshTexture: "/kanban.png", // Texture rendered on the 3D mesh
     title: "Apex Kanban - Modern Stylised Kanban Board",
-    subtitle: "username: alice | password: password123  | ESTABLISH SYSTEM ORDER",
+    subtitle:
+      "username: alice | password: password123  | ESTABLISH SYSTEM ORDER",
     linkplace: "Live link",
     link: "https://apex-team-board-web.vercel.app",
     GithubLink: "https://github.com/kibossChangole/ApexTeamBoard",
@@ -47,16 +48,16 @@ export const cardDataManifest = [
   {
     id: 3,
     coverMeshTexture: "/yapsesh.png",
-    title: "Cybernetic Oasis",
-    subtitle: "Art Direction & Shaders",
+    title: "YapSesh",
+    subtitle: "Meet and interact with Moros",
+    linkplace: "Live link",
+    link: "https://yapsesh-clone.vercel.app",
+    GithubLink: "https://github.com/kibossChangole/yapsesh",
+    githublinkplace: "GitHub Repository",
     description:
       "Card 2 has totally different copy! It talks about the beautiful aesthetic choices, color psychology, and environment lighting profiles.",
     additionalText:
       "Technical breakdowns or specifications unique to your second milestone asset.",
-    carouselImages: [
-      "https://picsum.photos/id/30/1200/800",
-      "https://picsum.photos/id/31/1200/800",
-      "https://picsum.photos/id/32/1200/800",
-    ],
+    carouselImages: ["/yapsesh/3.png", "/yapsesh/2.png", "/yapsesh/1.png"],
   },
 ];

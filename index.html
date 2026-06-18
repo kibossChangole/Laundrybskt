@@ -17,10 +17,6 @@
         top: 1.5rem;
         left: 50%;
         transform: translateX(-50%);
-        /* background: rgba(255, 255, 255, 0.1); */
-        /* backdrop-filter: blur(12px); */
-        /* -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.15); */
         padding: 0.6rem 1.5rem;
         border-radius: 3rem;
         color: white;
@@ -31,7 +27,6 @@
         display: flex;
         align-items: center;
         gap: 1rem;
-        /* box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); */
       ">
         <span style="
           font-weight: 700; 
@@ -42,8 +37,6 @@
         ">
           Kiboss Changole
         </span>
-     
-        
 
         <div class="nav-dropdown-menu" style="position: relative;">
           <button style="
@@ -129,18 +122,16 @@
         </nav>
 
          <p style="
-         position: absolute;
-         top: 3dvb;
-         left: 0px;
-          font-weight: 700; 
-          text-transform: uppercase; 
-          padding-right: 0.5rem;
-          white-space: nowrap;
-       
-        ">
+           position: absolute;
+           top: 3dvb;
+           left: 0px;
+           font-weight: 700; 
+           text-transform: uppercase; 
+           padding-right: 0.5rem;
+           white-space: nowrap;
+         ">
           Frontend Developer
-      </p>
-
+         </p>
       </div>
       
 
@@ -168,12 +159,27 @@
           <p style="color: #888; font-size: 1.1rem; line-height: 1.6; margin-bottom: 2rem;">
            Play Quick Flash Games
           </p>
-          <script type="text/javascript">
-            boatload_puzzles_format = 'landscape';</script>
-            <p>Loading <a href="https://www.boatloadpuzzles.com/playcrossword">
-            crossword puzzle</a>. One moment please.</p>
-            <script type="text/javascript"
-            src="//www.boatloadpuzzles.com/Crossword.js"></script>
+
+          <div class="crossword-wrapper" style="margin-bottom: 2rem;">
+            
+            <div class="crossword-mobile">
+              <script type="text/javascript">
+                boatload_puzzles_format = 'CompactPortrait';
+              </script>
+              <p>Loading <a href="https://www.boatloadpuzzles.com/playcrossword">crossword puzzle</a>. One moment please.</p>
+              <script type="text/javascript" src="//www.boatloadpuzzles.com/Crossword.js"></script>
+            </div>
+
+            <div class="crossword-desktop">
+              <script type="text/javascript">
+                boatload_puzzles_format = 'landscape';
+              </script>
+              <p>Loading <a href="https://www.boatloadpuzzles.com/playcrossword">crossword puzzle</a>. One moment please.</p>
+              <script type="text/javascript" src="//www.boatloadpuzzles.com/Crossword.js"></script>
+            </div>
+
+          </div>
+
           <button id="close-game-btn" style="
             background: #ffffff;
             color: #141414;
@@ -240,6 +246,7 @@
     <script type="module" src="/src/main.ts"></script>
 
     <style>
+      /* Desktop layout default settings */
       .nav-dropdown-menu { display: none !important; }
       .nav-flat-menu { display: flex !important; }
       .flat-item {
@@ -250,6 +257,11 @@
       }
       .flat-item:hover { color: #ffffff; }
 
+      /* Crossword visibility management rules */
+      .crossword-mobile { display: none; }
+      .crossword-desktop { display: block; }
+
+      /* Responsive Breakpoint (Matches your existing 600px mobile target) */
       @media (max-width: 600px) {
         .nav-flat-menu { display: none !important; }
         .nav-dropdown-menu { display: block !important; }
@@ -258,6 +270,10 @@
           flex-direction: column;
           gap: 0.25rem;
         }
+
+        /* Swap puzzle layout containers */
+        .crossword-mobile { display: block; }
+        .crossword-desktop { display: none; }
       }
 
       .dropdown-item {
